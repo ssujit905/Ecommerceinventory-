@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, FlatList, ActivityIndicator, RefreshControl, Dimensions } from "react-native";
-import { collection, getDocs, doc, setDoc } from "firebase/firestore";
+import { collection, getDocs } from "firebase/firestore";
 import { db } from "../firebase";
 import styles from "../styles/inventoryStyles";
 
@@ -51,13 +51,6 @@ const InventoryScreen = () => {
         stockIn: stockInData[productCode] || 0,
         stockOut: (stockOutData[productCode] || 0) - (returnedStock[productCode] || 0),
         availableStock: stockInData[productCode] - ((stockOutData[productCode] || 0) - (returnedStock[productCode] || 0))
-      }));
-
-      // Save product codes to Firestore
-      await Promise.all(finalInventory.map(async item => {
-        await setDoc(doc(db, "products", item.productCode), {
-          productCode: item.productCode
-        }, { merge: true });
       }));
 
       setInventoryData(finalInventory);

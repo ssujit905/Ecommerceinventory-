@@ -12,9 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { TouchableOpacity, View, Text, StyleSheet } from 'react-native';
 
 const CustomDrawerContent = (props) => {
-  const { setUser, setRole } = useContext(UserContext);
-
-  // Step 1: State for toggling the Finance dropdown menu
+  const { setUser, setRole, role } = useContext(UserContext); // include role
   const [isFinanceOpen, setIsFinanceOpen] = useState(false);
 
   const handleLogout = async () => {
@@ -32,50 +30,51 @@ const CustomDrawerContent = (props) => {
       {...props}
       style={{ backgroundColor: colors.drawerBackground }}
     >
-      {/* Render other Drawer items */}
+      {/* Render default Drawer items */}
       <DrawerItemList {...props} />
 
-      {/* Finance Dropdown */}
-      <View>
-        <TouchableOpacity
-          style={styles.dropdownHeader}
-          onPress={() => setIsFinanceOpen(!isFinanceOpen)} // Toggle dropdown
-        >
-          <Ionicons name="stats-chart" size={24} color={colors.drawerText} />
-          <Text style={styles.dropdownText}>Finance</Text>
-          <Ionicons
-            name={isFinanceOpen ? "chevron-up" : "chevron-down"}
-            size={16}
-            color={colors.drawerText}
-          />
-        </TouchableOpacity>
+      {/* Finance Dropdown - only for admin */}
+      {role === 'admin' && (
+        <View>
+          <TouchableOpacity
+            style={styles.dropdownHeader}
+            onPress={() => setIsFinanceOpen(!isFinanceOpen)}
+          >
+            <Ionicons name="stats-chart" size={24} color={colors.drawerText} />
+            <Text style={styles.dropdownText}>Finance</Text>
+            <Ionicons
+              name={isFinanceOpen ? 'chevron-up' : 'chevron-down'}
+              size={16}
+              color={colors.drawerText}
+            />
+          </TouchableOpacity>
 
-        {isFinanceOpen && (
-          <View style={styles.dropdownMenu}>
-            <DrawerItem
-              label="Purchase"
-              labelStyle={styles.subItemText}
-              onPress={() => props.navigation.navigate('Purchase')}
-            />
-            <DrawerItem
-              label="Income"
-              labelStyle={styles.subItemText}
-              onPress={() => props.navigation.navigate('Income')}
-            />
-            <DrawerItem
-              label="Profit/Loss"
-              labelStyle={styles.subItemText}
-              onPress={() => props.navigation.navigate('Profit/Loss')}
-            />
-            <DrawerItem
-
-              label="MonthlyProfit"
-              labelStyle={styles.subItemText}
-              onPress={() => props.navigation.navigate('Monthly Profit')}
-            />
-          </View>
-        )}
-      </View>
+          {isFinanceOpen && (
+            <View style={styles.dropdownMenu}>
+              <DrawerItem
+                label="Purchase"
+                labelStyle={styles.subItemText}
+                onPress={() => props.navigation.navigate('Purchase')}
+              />
+              <DrawerItem
+                label="Income"
+                labelStyle={styles.subItemText}
+                onPress={() => props.navigation.navigate('Income')}
+              />
+              <DrawerItem
+                label="Profit/Loss"
+                labelStyle={styles.subItemText}
+                onPress={() => props.navigation.navigate('Profit/Loss')}
+              />
+              <DrawerItem
+                label="MonthlyProfit"
+                labelStyle={styles.subItemText}
+                onPress={() => props.navigation.navigate('Monthly Profit')}
+              />
+            </View>
+          )}
+        </View>
+      )}
 
       {/* Logout */}
       <DrawerItem
@@ -101,6 +100,7 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     fontSize: 16,
     color: colors.drawerText,
+    flex: 1,
   },
   dropdownMenu: {
     paddingLeft: 20,

@@ -11,40 +11,31 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { FloatingAction } from "react-native-floating-action";
-import { collection, orderBy } from "firebase/firestore";
 import { db } from "../firebase";
 import colors from "../styles/colors";
-import { fetchStockIn, addStockIn } from "../services/stockService"; // Assume this service is created
+import { fetchStockIn, addStockIn } from "../services/stockService";
 
 const StockIn = () => {
   const [modalVisible, setModalVisible] = useState(false);
-
-
-const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
-
-
+  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [productCode, setProductCode] = useState("");
   const [productDetails, setProductDetails] = useState("");
   const [quantity, setQuantity] = useState("");
   const [stockData, setStockData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [touched, setTouched] = useState({
     productCode: false,
     productDetails: false,
     quantity: false,
   });
 
-  // Validation helpers
   const isValidQuantity = () => /^\d+$/.test(quantity) && parseInt(quantity) > 0;
-  const isFormValid = () => 
-    productCode.trim() && 
-    productDetails.trim() && 
+  const isFormValid = () =>
+    productCode.trim() &&
+    productDetails.trim() &&
     isValidQuantity();
 
-  // Error messages
   const getQuantityError = () => {
     if (!touched.quantity) return null;
     if (!quantity) return "Quantity is required";
@@ -69,7 +60,7 @@ const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
     setIsSubmitting(true);
     try {
       await addStockIn({
-        date: date.toISOString().split("T")[0],
+        date,
         productCode: productCode.trim(),
         productDetails: productDetails.trim(),
         quantity: parseInt(quantity),
@@ -87,11 +78,7 @@ const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
 
   const handleCloseModal = () => {
     setModalVisible(false);
-
-
     setDate(new Date().toISOString().split("T")[0]);
-
-
     setProductCode("");
     setProductDetails("");
     setQuantity("");
@@ -125,16 +112,15 @@ const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
         />
       )}
 
-      <FloatingAction
-        actions={[{
-          text: "Add Stock",
-          icon: <Ionicons name="add" size={24} color={colors.white} />,
-          name: "add_stock",
-          color: colors.primary,
-        }]}
-        onPressItem={() => setModalVisible(true)}
-      />
+      {/* Add Stock Button */}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => setModalVisible(true)}
+      >
+        <Ionicons name="add" size={28} color={colors.white} />
+      </TouchableOpacity>
 
+      {/* Modal for Adding Stock */}
       <Modal
         animationType="slide"
         transparent
@@ -145,8 +131,8 @@ const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Add Stock</Text>
 
-            {/* Date Picker */}
-<TextInput
+            {/* Date */}
+            <TextInput
               style={styles.input}
               value={date}
               onChangeText={setDate}
@@ -154,15 +140,13 @@ const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
             />
             {!date && <Text style={styles.errorText}>Date is required</Text>}
 
-
-
             {/* Product Code */}
             <TextInput
               style={styles.input}
               value={productCode}
               onChangeText={setProductCode}
               placeholder="Product Code"
-              onBlur={() => setTouched(p => ({ ...p, productCode: true }))}
+              onBlur={() => setTouched((p) => ({ ...p, productCode: true }))}
             />
             {touched.productCode && !productCode.trim() && (
               <Text style={styles.errorText}>Product Code is required</Text>
@@ -175,7 +159,7 @@ const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
               onChangeText={setProductDetails}
               placeholder="Product Details"
               multiline
-              onBlur={() => setTouched(p => ({ ...p, productDetails: true }))}
+              onBlur={() => setTouched((p) => ({ ...p, productDetails: true }))}
             />
             {touched.productDetails && !productDetails.trim() && (
               <Text style={styles.errorText}>Product Details are required</Text>
@@ -188,15 +172,15 @@ const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
               onChangeText={setQuantity}
               placeholder="Quantity"
               keyboardType="numeric"
-              onBlur={() => setTouched(p => ({ ...p, quantity: true }))}
+              onBlur={() => setTouched((p) => ({ ...p, quantity: true }))}
             />
             {getQuantityError() && (
               <Text style={styles.errorText}>{getQuantityError()}</Text>
             )}
 
-            {/* Action Buttons */}
+            {/* Buttons */}
             <View style={styles.buttonContainer}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.addButton, (!isFormValid() || isSubmitting) && styles.disabledButton]}
                 onPress={handleAddStock}
                 disabled={!isFormValid() || isSubmitting}
@@ -207,8 +191,8 @@ const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
                   <Text style={styles.buttonText}>Add</Text>
                 )}
               </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.cancelButton} 
+              <TouchableOpacity
+                style={styles.cancelButton}
                 onPress={handleCloseModal}
                 disabled={isSubmitting}
               >
@@ -222,9 +206,8 @@ const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   );
 };
 
-// Add these new styles to your StyleSheet
 const styles = StyleSheet.create({
-container: {
+  container: {
     flex: 1,
     backgroundColor: colors.background,
     padding: 10,
@@ -249,6 +232,21 @@ container: {
   cardText: {
     fontSize: 16,
     color: colors.text,
+  },
+  emptyText: {
+    textAlign: 'center',
+    marginTop: 20,
+    fontSize: 16,
+    color: colors.textSecondary,
+  },
+  fab: {
+    position: "absolute",
+    bottom: 20,
+    right: 20,
+    backgroundColor: colors.primary,
+    borderRadius: 50,
+    padding: 16,
+    elevation: 5,
   },
   modalContainer: {
     flex: 1,
@@ -308,20 +306,9 @@ container: {
     fontSize: 16,
     fontWeight: "bold",
   },
-
-
-  // ... existing styles ...
   disabledButton: {
     opacity: 0.6,
   },
-
-  emptyText: {
-    textAlign: 'center',
-    marginTop: 20,
-    fontSize: 16,
-    color: colors.textSecondary,
-  },
-  // ... rest of the styles ...
 });
 
 export default StockIn;
