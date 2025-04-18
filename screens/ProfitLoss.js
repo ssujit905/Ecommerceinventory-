@@ -98,7 +98,9 @@ const ProfitLossScreen = () => {
   };
 
   const totalProductCost = productCosts.reduce((sum, item) => sum + item.totalCost, 0);
-  const totalProfitLoss = income - (expenses + purchasedAmount);
+
+const totalProfitLoss = income - (expenses + totalProductCost );
+
   const cashInHand = (income + investment) - (expenses + purchasedAmount);
   const remainingStockValue = purchasedAmount - totalProductCost;
 

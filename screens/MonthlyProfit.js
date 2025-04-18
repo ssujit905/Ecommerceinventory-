@@ -176,7 +176,8 @@ const MonthlyProfit = () => {
       <Text style={styles.title}>{monthName}</Text>
       <Text style={[styles.label, { color: 'red' }]}>Monthly Expenses: ₹{expenses}</Text>
       <Text style={[styles.label, { color: 'green' }]}>Monthly Income: ₹{income}</Text>
-      <Text style={[styles.label, { color: profitLoss >= 0 ? 'green' : 'red' }]}>Monthly Profit/Loss: ₹{profitLoss}</Text>
+
+<Text style={[styles.label1, { color: profitLoss >= 0 ? 'green' : 'red' }]}>Monthly Profit/Loss: ₹{profitLoss}</Text>
 
       <Text style={styles.sectionTitle}>Monthly Purchase Cost</Text>
       <View style={styles.tableHeader}>
@@ -223,6 +224,7 @@ const styles = StyleSheet.create({
   container: { padding: 16 },
   title: { fontSize: 24, fontWeight: 'bold', marginBottom: 10 },
   label: { fontSize: 16, marginVertical: 4 },
+label1: { fontSize: 20, marginVertical: 4 },
   sectionTitle: { fontSize: 18, fontWeight: 'bold', marginTop: 20, marginBottom: 10 },
   tableHeader: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 5 },
   headerText: { fontWeight: 'bold', width: '25%' },

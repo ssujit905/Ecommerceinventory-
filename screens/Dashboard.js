@@ -206,6 +206,10 @@ const Dashboard = () => {
               <Text>Status: {item.status}</Text>
               <Text>Product Code: {item.products?.map((p) => p.productCode).join(", ")}</Text>
               <Text>Quantity: {item.products?.map((p) => p.quantity).join(", ")}</Text>
+
+<Text>Destination Branch: {item.destinationBranch}</Text>
+<Text>Full Address: {item.fullAddress}</Text>
+
               <Text>CodAmount: {item.codAmount}</Text>
             </View>
           ))}

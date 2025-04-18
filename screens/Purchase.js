@@ -6,35 +6,27 @@ import colors from '../styles/colors';
 
 const Purchase = () => {
   const [stockInData, setStockInData] = useState([]);
-  const [purchaseData, setPurchaseData] = useState([]);
   const [unitCosts, setUnitCosts] = useState({});
-  const [totalPurchaseCost, setTotalPurchaseCost] = useState(0);
+  const [purchaseData, setPurchaseData] = useState([]);
   const [avgCostData, setAvgCostData] = useState([]);
+  const [totalPurchaseCost, setTotalPurchaseCost] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Fetch all necessary data
   const fetchData = async () => {
     try {
-      // Fetch Stock In Data
       const stockSnapshot = await getDocs(collection(db, 'stockIn'));
-      const stockData = stockSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const stockData = stockSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
       setStockInData(stockData);
 
-      // Fetch Unit Costs
       const unitCostSnapshot = await getDocs(collection(db, 'unitCosts'));
       const costData = {};
       unitCostSnapshot.docs.forEach(doc => {
         costData[doc.id] = doc.data().unitCost;
       });
       setUnitCosts(costData);
-
-      // Fetch Average Costs
-      const avgCostSnapshot = await getDocs(collection(db, 'averageCosts'));
-      const avgData = avgCostSnapshot.docs.map(doc => ({
-        productCode: doc.id,
-        ...doc.data()
-      }));
-      setAvgCostData(avgData);
     } catch (error) {
       console.error('Error fetching data:', error);
     }
@@ -44,30 +36,28 @@ const Purchase = () => {
     fetchData();
   }, []);
 
-  // Process purchase data
   useEffect(() => {
-    if (stockInData.length > 0) {
-      const processedData = stockInData.map(item => ({
+    const processedData = stockInData.map(item => {
+      const key = item.id; // unique per stock entry
+      return {
+        id: key,
         productCode: item.productCode,
         quantity: item.quantity,
-        unitCost: unitCosts[item.productCode] || '',
-        purchaseCost: (unitCosts[item.productCode] || 0) * item.quantity,
-      }));
-      setPurchaseData(processedData);
-    }
+        unitCost: unitCosts[key] ?? '',
+        purchaseCost: (unitCosts[key] ?? 0) * item.quantity,
+      };
+    });
+    setPurchaseData(processedData);
   }, [stockInData, unitCosts]);
 
-  // Calculate and save total purchase cost
   useEffect(() => {
     const totalCost = purchaseData.reduce((sum, item) => sum + item.purchaseCost, 0);
     setTotalPurchaseCost(totalCost);
     saveTotalPurchaseCostToFirebase(totalCost);
   }, [purchaseData]);
 
-  // Calculate and save average costs
   useEffect(() => {
     const calculateAndSaveAverageCosts = async () => {
-      const avgCostMap = {};
       const costSumMap = {};
       const quantitySumMap = {};
 
@@ -80,33 +70,33 @@ const Purchase = () => {
         quantitySumMap[item.productCode] += item.quantity;
       });
 
+      const avgData = [];
+
       for (const productCode in costSumMap) {
-        const avgCost = costSumMap[productCode] / quantitySumMap[productCode];
-        avgCostMap[productCode] = avgCost;
-        
-        // Save complete average cost data
+        const avgCost = quantitySumMap[productCode]
+          ? parseFloat((costSumMap[productCode] / quantitySumMap[productCode]).toFixed(2))
+          : 0;
+
         await setDoc(doc(db, 'averageCosts', productCode), {
           productCode,
           avgCost
         });
+
+        avgData.push({ productCode, avgCost });
       }
 
-      const avgData = Object.entries(avgCostMap).map(([productCode, avgCost]) => ({
-        productCode,
-        avgCost
-      }));
       setAvgCostData(avgData);
     };
 
     calculateAndSaveAverageCosts();
   }, [purchaseData]);
 
-  const handleUnitCostChange = async (productCode, value) => {
+  const handleUnitCostChange = async (entryId, value) => {
     const newCost = parseFloat(value) || 0;
-    setUnitCosts(prev => ({ ...prev, [productCode]: newCost }));
-    
+    setUnitCosts(prev => ({ ...prev, [entryId]: newCost }));
+
     try {
-      await setDoc(doc(db, 'unitCosts', productCode), { unitCost: newCost });
+      await setDoc(doc(db, 'unitCosts', entryId), { unitCost: newCost });
     } catch (error) {
       console.error('Error saving unit cost:', error);
     }
@@ -129,14 +119,8 @@ const Purchase = () => {
   return (
     <ScrollView
       style={styles.container}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-        />
-      }
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
-      {/* Average Cost Table */}
       <Text style={styles.tableTitle}>Average Product Cost</Text>
       <View style={styles.table}>
         <View style={styles.tableRow}>
@@ -146,12 +130,11 @@ const Purchase = () => {
         {avgCostData.map((item, index) => (
           <View key={index} style={styles.tableRow}>
             <Text style={styles.tableCell}>{item.productCode}</Text>
-            <Text style={styles.tableCell}>{item.avgCost?.toFixed(2)}</Text>
+            <Text style={styles.tableCell}>{item.avgCost.toFixed(2)}</Text>
           </View>
         ))}
       </View>
 
-      {/* Purchase Data Table */}
       <Text style={styles.tableTitle}>Purchase Details</Text>
       <View style={styles.table}>
         <View style={styles.tableRow}>
@@ -161,23 +144,22 @@ const Purchase = () => {
           <Text style={styles.tableHeader}>Total Cost</Text>
         </View>
         {purchaseData.map((item, index) => (
-          <View key={index} style={styles.tableRow}>
+          <View key={item.id} style={styles.tableRow}>
             <Text style={styles.tableCell}>{item.productCode}</Text>
             <Text style={styles.tableCell}>{item.quantity}</Text>
             <TextInput
               style={styles.input}
               keyboardType="numeric"
-              value={unitCosts[item.productCode]?.toString() || ''}
-              onChangeText={value => handleUnitCostChange(item.productCode, value)}
+              value={unitCosts[item.id]?.toString() || ''}
+              onChangeText={value => handleUnitCostChange(item.id, value)}
             />
             <Text style={styles.tableCell}>
-              {(unitCosts[item.productCode] * item.quantity).toFixed(2)}
+              {(unitCosts[item.id] * item.quantity).toFixed(2)}
             </Text>
           </View>
         ))}
       </View>
 
-      {/* Total Purchase Cost */}
       <View style={styles.totalContainer}>
         <Text style={styles.totalText}>
           Total Purchase Cost: ${totalPurchaseCost.toFixed(2)}
