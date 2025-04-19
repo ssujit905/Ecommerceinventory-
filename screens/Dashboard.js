@@ -8,8 +8,9 @@ import {
   ScrollView,
   Image,
   Dimensions,
+  Animated,
 } from "react-native";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   collection,
   query,
@@ -44,6 +45,14 @@ const Dashboard = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoadingPreviousMonths, setIsLoadingPreviousMonths] = useState(false);
   const [last7DaysData, setLast7DaysData] = useState([]);
+  
+  // Animation values
+
+const fadeAnim = useRef(new Animated.Value(0)).current;
+  const searchWidth = useRef(new Animated.Value(40)).current;
+
+
+
 
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, "sales"), async (snapshot) => {
@@ -105,7 +114,7 @@ const Dashboard = () => {
         returned: monthlyData[currentMonth]?.returned || 0,
       });
 
-      // Update chart data
+// Update chart data
       const last7Days = [];
       for (let i = 6; i >= 0; i--) {
         const day = moment().subtract(i, "days").format("YYYY-MM-DD");
@@ -115,7 +124,17 @@ const Dashboard = () => {
       const dailyCount = last7Days.map((date) =>
         salesList.filter((sale) => sale.date === date).length
       );
-      setLast7DaysData({ labels: last7Days.map(d => moment(d).format("DD MMM")), counts: dailyCount });
+      setLast7DaysData({ 
+        labels: last7Days.map(d => moment(d).format("DD MMM")), 
+        counts: dailyCount 
+      });
+
+      // Fade in animation when data is loaded
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }).start();
 
       setIsLoading(false);
     });
@@ -158,131 +177,244 @@ const Dashboard = () => {
     setIsRefreshing(false);
   };
 
-  const toggleSearch = () => {
-    setIsSearchVisible(!isSearchVisible);
-    setSearchText("");
-    setFilteredSales([]);
-  };
+const toggleSearch = () => {
+    if (isSearchVisible) {
+      // Collapse search
+      Animated.timing(searchWidth, {
+        toValue: 40,
+        duration: 300,
+        useNativeDriver: false,
+      }).start(() => {
+        setIsSearchVisible(false);
+        setSearchText("");
+        setFilteredSales([]);
+      });
+    } else {
+      // Expand search
+      setIsSearchVisible(true);
+      Animated.timing(searchWidth, {
+        toValue: screenWidth - 60,
+        duration: 300,
+        useNativeDriver: false,
+      }).start();
+    }
+  };  
 
   if (isLoading) {
     return (
       <View style={dashboardStyles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={{ marginTop: 15, color: '#666' }}>Loading your dashboard...</Text>
       </View>
     );
   }
 
-  return (
-    <ScrollView
-      style={dashboardStyles.container}
-      contentContainerStyle={dashboardStyles.contentContainer}
-      refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />}
-    >
-      {/* Header and Search */}
-      <Text style={dashboardStyles.title}>InventoryApp</Text>
-      <View style={dashboardStyles.searchContainer}>
-        <TouchableOpacity onPress={toggleSearch}>
-          <FontAwesome name="search" size={20} color={colors.primary} />
-        </TouchableOpacity>
-        {isSearchVisible && (
-          <TextInput
-            style={dashboardStyles.searchInput}
-            placeholder="Enter Name or Phone Number"
-            value={searchText}
-            onChangeText={setSearchText}
-          />
-        )}
-      </View>
-
-      {/* Search Results */}
-      {filteredSales.length > 0 && (
-        <View>
-          {filteredSales.map((item) => (
-            <View key={item.id} style={dashboardStyles.salesCard}>
-              {item.image && <Image source={{ uri: item.image }} style={dashboardStyles.salesImage} />}
-              <Text>Date: {item.date}</Text>
-              <Text>Name: {item.customerName}</Text>
-              <Text>Phone: {item.phone1}</Text>
-              <Text>Status: {item.status}</Text>
-              <Text>Product Code: {item.products?.map((p) => p.productCode).join(", ")}</Text>
-              <Text>Quantity: {item.products?.map((p) => p.quantity).join(", ")}</Text>
-
-<Text>Destination Branch: {item.destinationBranch}</Text>
-<Text>Full Address: {item.fullAddress}</Text>
-
-              <Text>CodAmount: {item.codAmount}</Text>
-            </View>
-          ))}
-        </View>
-      )}
-
-      {/* Quote Card */}
-      <View style={dashboardStyles.quoteCard}>
-        <Text style={dashboardStyles.quoteText}>
-          “The biggest risk is not taking any risk. In a world that’s changing quickly, the only strategy that is
-          guaranteed to fail is not taking risks.”
-        </Text>
-        <Text style={dashboardStyles.signature}>Sujit Singh Creation</Text>
-      </View>
-
-      {/* Sales Metrics */}
-      <Text style={dashboardStyles.sectionTitle}>Total Delivered Sales</Text>
-      <Text style={dashboardStyles.salesCount}>{totalSales}</Text>
-
-      <Text style={dashboardStyles.sectionTitle}>Total Returned Sales</Text>
-      <Text style={dashboardStyles.returnedCount}>{returnedSales}</Text>
-
-      <Text style={dashboardStyles.sectionTitle}>Current Month Sales</Text>
-      <Text style={dashboardStyles.monthText}>{monthlySales.month}</Text>
-      <Text style={dashboardStyles.deliveredText}>Delivered: {monthlySales.delivered}</Text>
-      <Text style={dashboardStyles.returnedText}>Returned: {monthlySales.returned}</Text>
-
-      {/* Last 7 Days Bar Chart */}
-      <Text style={dashboardStyles.sectionTitle}>Last 7 Days Sales</Text>
-      <BarChart
-        data={{
-          labels: last7DaysData.labels,
-          datasets: [{ data: last7DaysData.counts }],
-        }}
-        width={screenWidth - 40}
-        height={220}
-        fromZero
-        chartConfig={{
-          backgroundColor: "#fff",
-          backgroundGradientFrom: "#fff",
-          backgroundGradientTo: "#fff",
-          decimalPlaces: 0,
-          color: (opacity = 1) => `rgba(0, 122, 255, ${opacity})`,
-          labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-        }}
-        style={{ marginVertical: 10, borderRadius: 10, alignSelf: "center" }}
-      />
-
-      {/* Previous Months Toggle */}
-      <TouchableOpacity
-        style={[dashboardStyles.button, { backgroundColor: colors.primary }]}
-        onPress={async () => {
-          if (!showPreviousMonths) await fetchPreviousMonthsData();
-          setShowPreviousMonths(!showPreviousMonths);
-        }}
-        disabled={isLoadingPreviousMonths}
+  const chartConfig = {
+    backgroundColor: '#ffffff',
+    backgroundGradientFrom: '#ffffff',
+    backgroundGradientTo: '#ffffff',
+    decimalPlaces: 0,
+    color: (opacity = 1) => `rgba(0, 122, 255, ${opacity})`,
+    labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+    style: {
+      borderRadius: 16,
+    },
+    propsForDots: {
+      r: '6',
+      strokeWidth: '2',
+      stroke: colors.primary,
+    },
+    propsForLabels: {
+      fontSize: 11,
+    },
+  };
+return (
+    <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
+      <ScrollView
+        style={dashboardStyles.container}
+        contentContainerStyle={dashboardStyles.contentContainer}
+        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} colors={[colors.primary]} />}
       >
-        <Text style={dashboardStyles.buttonText}>
-          {isLoadingPreviousMonths ? "Loading..." : showPreviousMonths ? "Hide Historical Data" : "Show Historical Data"}
-        </Text>
-      </TouchableOpacity>
+        {/* Header and Search */}
+        <View style={dashboardStyles.header}>
+          <Text style={dashboardStyles.title}>InventoryApp</Text>
+          <Animated.View style={[dashboardStyles.searchContainer, { width: searchWidth }]}>
+            <TouchableOpacity onPress={toggleSearch} style={dashboardStyles.searchIcon}>
+              <FontAwesome name="search" size={20} color={colors.primary} />
+            </TouchableOpacity>
+            {isSearchVisible && (
+              <TextInput
+                style={dashboardStyles.searchInput}
+                placeholder="Search name or phone..."
+                value={searchText}
+                onChangeText={setSearchText}
+                autoFocus
+              />
+            )}
+          </Animated.View>
+        </View>
 
-      {/* Previous Months Data */}
-      {showPreviousMonths &&
-        previousMonths.map((monthData, index) => (
-          <View key={index} style={dashboardStyles.monthCard}>
-            <Text style={dashboardStyles.monthHeader}>{monthData.month}</Text>
-            <Text>Delivered: {monthData.delivered}</Text>
-            <Text>Returned: {monthData.returned}</Text>
+        {/* Search Results */}
+        {filteredSales.length > 0 ? (
+          <View>
+            <Text style={dashboardStyles.sectionTitle}>Search Results ({filteredSales.length})</Text>
+            {filteredSales.map((item) => (
+              <View key={item.id} style={dashboardStyles.salesCard}>
+                {item.image && <Image source={{ uri: item.image }} style={dashboardStyles.salesImage} />}
+                <View style={dashboardStyles.itemRow}>
+                  <Text style={dashboardStyles.itemLabel}>Date:</Text>
+                  <Text style={dashboardStyles.itemValue}>{item.date}</Text>
+                </View>
+                <View style={dashboardStyles.itemRow}>
+                  <Text style={dashboardStyles.itemLabel}>Name:</Text>
+                  <Text style={dashboardStyles.itemValue}>{item.customerName}</Text>
+                </View>
+                <View style={dashboardStyles.itemRow}>
+                  <Text style={dashboardStyles.itemLabel}>Phone:</Text>
+                  <Text style={dashboardStyles.itemValue}>{item.phone1}</Text>
+                </View>
+                <View style={dashboardStyles.itemRow}>
+                  <Text style={dashboardStyles.itemLabel}>Status:</Text>
+                  <Text style={[
+                    dashboardStyles.itemValue, 
+                    { color: item.status === "Delivered" ? "#4CAF50" : "#ff6b6b" }
+                  ]}>
+                    {item.status}
+                  </Text>
+                </View>
+                <View style={dashboardStyles.itemRow}>
+                  <Text style={dashboardStyles.itemLabel}>Product Code:</Text>
+                  <Text style={dashboardStyles.itemValue}>{item.products?.map((p) => p.productCode).join(", ")}</Text>
+                </View>
+                <View style={dashboardStyles.itemRow}>
+                  <Text style={dashboardStyles.itemLabel}>Quantity:</Text>
+                  <Text style={dashboardStyles.itemValue}>{item.products?.map((p) => p.quantity).join(", ")}</Text>
+                </View>
+                <View style={dashboardStyles.itemRow}>
+                  <Text style={dashboardStyles.itemLabel}>Destination:</Text>
+                  <Text style={dashboardStyles.itemValue}>{item.destinationBranch}</Text>
+                </View>
+                <View style={dashboardStyles.itemRow}>
+                  <Text style={dashboardStyles.itemLabel}>Address:</Text>
+                  <Text style={dashboardStyles.itemValue}>{item.fullAddress}</Text>
+                </View>
+                <View style={dashboardStyles.itemRow}>
+                  <Text style={dashboardStyles.itemLabel}>COD Amount:</Text>
+                  <Text style={dashboardStyles.itemValue}>${item.codAmount}</Text>
+                </View>
+              </View>
+            ))}
           </View>
-        ))}
-    </ScrollView>
+) : searchText.length > 0 ? (
+          <Text style={dashboardStyles.noResults}>No matches found for "{searchText}"</Text>
+        ) : null}
+
+        {/* Summary Cards Section */}
+        {filteredSales.length === 0 && (
+          <>
+            {/* Quote Card */}
+            <View style={dashboardStyles.quoteCard}>
+              <Text style={dashboardStyles.quoteText}>
+                "The biggest risk is not taking any risk. In a world that's changing quickly, the only strategy that is
+                guaranteed to fail is not taking risks."
+              </Text>
+              <Text style={dashboardStyles.signature}>Sujit Singh Creation</Text>
+            </View>
+
+            {/* Key Metrics in a 2-column layout */}
+            <Text style={dashboardStyles.sectionTitle}>Sales Overview</Text>
+            <View style={dashboardStyles.summaryRow}>
+              <View style={[dashboardStyles.summaryCard, { backgroundColor: '#f0f9ff' }]}>
+                <Text style={dashboardStyles.summaryTitle}>Total Delivered</Text>
+                <Text style={[dashboardStyles.summaryValue, { color: '#4CAF50' }]}>{totalSales}</Text>
+              </View>
+              <View style={[dashboardStyles.summaryCard, { backgroundColor: '#fff8f8' }]}>
+                <Text style={dashboardStyles.summaryTitle}>Total Returned</Text>
+                <Text style={[dashboardStyles.summaryValue, { color: '#ff6b6b' }]}>{returnedSales}</Text>
+              </View>
+            </View>
+
+            {/* Current Month Card */}
+            <View style={dashboardStyles.metricsCard}>
+              <Text style={[dashboardStyles.sectionTitle, { marginTop: 0 }]}>
+                {monthlySales.month} Performance
+              </Text>
+              <View style={dashboardStyles.statusContainer}>
+                <View style={dashboardStyles.statusItem}>
+                  <View style={[dashboardStyles.statusDot, { backgroundColor: '#4CAF50' }]} />
+                  <Text style={dashboardStyles.statusText}>Delivered: {monthlySales.delivered}</Text>
+                </View>
+                <View style={dashboardStyles.statusItem}>
+                  <View style={[dashboardStyles.statusDot, { backgroundColor: '#ff6b6b' }]} />
+                  <Text style={dashboardStyles.statusText}>Returned: {monthlySales.returned}</Text>
+                </View>
+              </View>
+            </View>
+{/* Last 7 Days Bar Chart */}
+            <Text style={dashboardStyles.sectionTitle}>Sales Trend (Last 7 Days)</Text>
+            <View style={dashboardStyles.chartContainer}>
+              <BarChart
+                data={{
+                  labels: last7DaysData.labels,
+                  datasets: [{ 
+                    data: last7DaysData.counts,
+                    colors: last7DaysData.counts.map((value) => 
+                      value >= 5 ? () => colors.primary : () => colors.lightPrimary
+                    )
+                  }],
+                }}
+                width={screenWidth - 50}
+                height={220}
+                fromZero
+                showValuesOnTopOfBars
+                chartConfig={chartConfig}
+                style={{ borderRadius: 12 }}
+                verticalLabelRotation={30}
+                withInnerLines={false}
+                yAxisSuffix=""
+              />
+            </View>
+
+            {/* Previous Months Toggle */}
+            <TouchableOpacity
+              style={[dashboardStyles.button, { backgroundColor: colors.primary }]}
+              onPress={async () => {
+                if (!showPreviousMonths) await fetchPreviousMonthsData();
+                setShowPreviousMonths(!showPreviousMonths);
+              }}
+              disabled={isLoadingPreviousMonths}
+            >
+              <Text style={dashboardStyles.buttonText}>
+                {isLoadingPreviousMonths ? "Loading..." : showPreviousMonths ? "Hide Historical Data" : "Show Historical Data"}
+              </Text>
+            </TouchableOpacity>
+{/* Previous Months Data */}
+            {showPreviousMonths && (
+              <>
+                <Text style={dashboardStyles.sectionTitle}>Historical Performance</Text>
+                {previousMonths.map((monthData, index) => (
+                  <View key={index} style={dashboardStyles.monthCard}>
+                    <Text style={dashboardStyles.monthHeader}>{monthData.month}</Text>
+                    <View style={dashboardStyles.statusContainer}>
+                      <View style={dashboardStyles.statusItem}>
+                        <View style={[dashboardStyles.statusDot, { backgroundColor: '#4CAF50' }]} />
+                        <Text style={dashboardStyles.statusText}>Delivered: {monthData.delivered}</Text>
+                      </View>
+                      <View style={dashboardStyles.statusItem}>
+                        <View style={[dashboardStyles.statusDot, { backgroundColor: '#ff6b6b' }]} />
+                        <Text style={dashboardStyles.statusText}>Returned: {monthData.returned}</Text>
+                      </View>
+                    </View>
+                  </View>
+                ))}
+              </>
+            )}
+          </>
+        )}
+      </ScrollView>
+    </Animated.View>
   );
 };
 
 export default Dashboard;
+
