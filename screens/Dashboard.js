@@ -33,7 +33,6 @@ const screenWidth = Dimensions.get("window").width;
 
 const Dashboard = () => {
   const [searchText, setSearchText] = useState("");
-  const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [salesData, setSalesData] = useState([]);
   const [filteredSales, setFilteredSales] = useState([]);
   const [totalSales, setTotalSales] = useState(0);
@@ -46,13 +45,7 @@ const Dashboard = () => {
   const [isLoadingPreviousMonths, setIsLoadingPreviousMonths] = useState(false);
   const [last7DaysData, setLast7DaysData] = useState([]);
   
-  // Animation values
-
-const fadeAnim = useRef(new Animated.Value(0)).current;
-  const searchWidth = useRef(new Animated.Value(40)).current;
-
-
-
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, "sales"), async (snapshot) => {
@@ -114,7 +107,7 @@ const fadeAnim = useRef(new Animated.Value(0)).current;
         returned: monthlyData[currentMonth]?.returned || 0,
       });
 
-// Update chart data
+      // Update chart data
       const last7Days = [];
       for (let i = 6; i >= 0; i--) {
         const day = moment().subtract(i, "days").format("YYYY-MM-DD");
@@ -177,29 +170,6 @@ const fadeAnim = useRef(new Animated.Value(0)).current;
     setIsRefreshing(false);
   };
 
-const toggleSearch = () => {
-    if (isSearchVisible) {
-      // Collapse search
-      Animated.timing(searchWidth, {
-        toValue: 40,
-        duration: 300,
-        useNativeDriver: false,
-      }).start(() => {
-        setIsSearchVisible(false);
-        setSearchText("");
-        setFilteredSales([]);
-      });
-    } else {
-      // Expand search
-      setIsSearchVisible(true);
-      Animated.timing(searchWidth, {
-        toValue: screenWidth - 60,
-        duration: 300,
-        useNativeDriver: false,
-      }).start();
-    }
-  };  
-
   if (isLoading) {
     return (
       <View style={dashboardStyles.loadingContainer}>
@@ -227,8 +197,10 @@ const toggleSearch = () => {
     propsForLabels: {
       fontSize: 11,
     },
+    barPercentage: 0.5, // Makes bars narrower
   };
-return (
+
+  return (
     <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
       <ScrollView
         style={dashboardStyles.container}
@@ -238,20 +210,16 @@ return (
         {/* Header and Search */}
         <View style={dashboardStyles.header}>
           <Text style={dashboardStyles.title}>InventoryApp</Text>
-          <Animated.View style={[dashboardStyles.searchContainer, { width: searchWidth }]}>
-            <TouchableOpacity onPress={toggleSearch} style={dashboardStyles.searchIcon}>
-              <FontAwesome name="search" size={20} color={colors.primary} />
-            </TouchableOpacity>
-            {isSearchVisible && (
-              <TextInput
-                style={dashboardStyles.searchInput}
-                placeholder="Search name or phone..."
-                value={searchText}
-                onChangeText={setSearchText}
-                autoFocus
-              />
-            )}
-          </Animated.View>
+          <View style={[dashboardStyles.searchContainer, { width: screenWidth - 60 }]}>
+            <FontAwesome name="search" size={20} color={colors.primary} style={dashboardStyles.searchIcon} />
+            <TextInput
+              style={dashboardStyles.searchInput}
+              placeholder="Search name or phone..."
+              value={searchText}
+              onChangeText={setSearchText}
+              autoFocus={false}
+            />
+          </View>
         </View>
 
         {/* Search Results */}
@@ -305,7 +273,7 @@ return (
               </View>
             ))}
           </View>
-) : searchText.length > 0 ? (
+        ) : searchText.length > 0 ? (
           <Text style={dashboardStyles.noResults}>No matches found for "{searchText}"</Text>
         ) : null}
 
@@ -350,9 +318,10 @@ return (
                 </View>
               </View>
             </View>
-{/* Last 7 Days Bar Chart */}
+
+            {/* Last 7 Days Bar Chart - Updated to show all 7 days */}
             <Text style={dashboardStyles.sectionTitle}>Sales Trend (Last 7 Days)</Text>
-            <View style={dashboardStyles.chartContainer}>
+            <View style={[dashboardStyles.chartContainer, { paddingHorizontal: 0 }]}>
               <BarChart
                 data={{
                   labels: last7DaysData.labels,
@@ -363,12 +332,15 @@ return (
                     )
                   }],
                 }}
-                width={screenWidth - 50}
+                width={screenWidth - 20}  // Reduced width to fit all bars
                 height={220}
                 fromZero
                 showValuesOnTopOfBars
                 chartConfig={chartConfig}
-                style={{ borderRadius: 12 }}
+                style={{ 
+                  borderRadius: 12,
+                  marginLeft: -15,  // Negative margin to compensate
+                }}
                 verticalLabelRotation={30}
                 withInnerLines={false}
                 yAxisSuffix=""
@@ -388,7 +360,8 @@ return (
                 {isLoadingPreviousMonths ? "Loading..." : showPreviousMonths ? "Hide Historical Data" : "Show Historical Data"}
               </Text>
             </TouchableOpacity>
-{/* Previous Months Data */}
+
+            {/* Previous Months Data */}
             {showPreviousMonths && (
               <>
                 <Text style={dashboardStyles.sectionTitle}>Historical Performance</Text>
@@ -417,4 +390,3 @@ return (
 };
 
 export default Dashboard;
-
