@@ -1,16 +1,41 @@
-import { collection, addDoc, getDocs, query, orderBy } from "firebase/firestore";
+import { collection, addDoc, getDocs, orderBy, query } from "firebase/firestore";
 import { db } from "../firebase";
 
+// Fetch all stock-in entries sorted by date
 export const fetchStockIn = async () => {
-  const q = query(collection(db, "stockIn"), orderBy("date", "desc"));
-  const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map((doc, index) => ({
-    id: doc.id,
-    serial: index + 1,
-    ...doc.data(),
-  }));
+  try {
+    const stockInRef = collection(db, "stockIn");
+    const q = query(stockInRef, orderBy("date", "desc"));
+    const querySnapshot = await getDocs(q);
+    
+    const data = [];
+    let serial = 1;
+    
+    querySnapshot.forEach((doc) => {
+      data.push({
+        id: doc.id,
+        serial: serial++,
+        ...doc.data(),
+      });
+    });
+    
+    return data;
+  } catch (error) {
+    console.error("Error fetching stock in:", error);
+    throw error;
+  }
 };
 
+// Add a new stock-in entry
 export const addStockIn = async (stockData) => {
-  await addDoc(collection(db, "stockIn"), stockData);
+  try {
+    const stockInRef = collection(db, "stockIn");
+    await addDoc(stockInRef, {
+      ...stockData,
+      timestamp: new Date(),
+    });
+  } catch (error) {
+    console.error("Error adding stock:", error);
+    throw error;
+  }
 };
